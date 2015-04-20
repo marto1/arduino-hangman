@@ -59,6 +59,21 @@
         displayLine(secondLine, 1);
       }
       
+      void scrollSecondLine(boolean side, String fill){
+        unsigned int len = secondLine.length();
+        if (side) {
+           secondLine = String(secondLine.substring(1, len));
+           secondLine += String(fill);
+           //setSecondLine("FSDS");
+        } else { 
+           secondLine = String(fill) + secondLine.substring(0, len-1);
+          //l.scrollDisplayRight();
+        }
+        l.clear();
+        displayFirstLine();
+        displaySecondLine();
+        l.setCursor(0, 1);
+      }
  };
 
  // initialize the library with the numbers of the interface pins
@@ -86,26 +101,22 @@
  }
 
  void initSecondLine() {
-  win.setSecondLine(alphabet);
+  win.setSecondLine(String(alphabet).substring(0, 16));
   win.displaySecondLine();
  }
-
- void moveCursor(int previous){
-
  
- }
- 
- 
+ int leftOffset = 16; 
+ int rightOffset = 25;
  void setup() {
-     // set up the LCD's number of columns and rows: 
+  // set up the LCD's number of columns and rows: 
   lcd.begin(16, 2);
   // turn on the cursor:
   lcd.cursor();
-  //delay(1000);
   initFirstLine(6, 4);
   initSecondLine();
-  //lcd.setCursor(0, 1);
+  //win.scrollSecondLine(true, "!");
   Serial.begin(9600);
+
  }
 
  int treatValue(int data) {
@@ -135,19 +146,50 @@
    }
    return 0;
  }
+ 
+ void scrollAlphabet(boolean side){
+   String c;
+   if (leftOffset >= 26) {
+       leftOffset = 0;
+   }
+   if (leftOffset < 0){
+       leftOffset = 25;
+   }
+   if (rightOffset >= 26){
+       rightOffset = 0;
+   }
+   if (rightOffset < 0) {
+       rightOffset = 25;
+   }
+   if (side){
+     c = String(alphabet[leftOffset]);
+     leftOffset++;
+     rightOffset++ ;
+   } else {
+     c = String(alphabet[rightOffset]);
+     rightOffset--;
+     leftOffset--;
+   }
+   win.scrollSecondLine(side, c);
+ }
 
  void loop() {
   // reads the value of the variable resistor
   value1 = analogRead(joyPin1);  
   // this small pause is needed between reading
   // analog pins, otherwise we get the same value twice
-  delay(1000);            
+  delay(100);            
   // reads the value of the variable resistor
   value2 = analogRead(joyPin2);
-  Serial.print('J');
-  Serial.print(treatValue(value1));
-  Serial.print('|');
-  Serial.print(treatValue(value2));
-  Serial.print('|');
-  Serial.println(getJoyDirection(treatValue(value1), treatValue(value2)));
+//  Serial.print('J');
+//  Serial.print(treatValue(value1));
+//  Serial.print('|');
+//  Serial.print(treatValue(value2));
+//  Serial.print('|');
+  int dir = getJoyDirection(treatValue(value1), treatValue(value2));
+  if (dir == 2){
+    scrollAlphabet(true);
+  } else if (dir == 1){
+    scrollAlphabet(false);
+  }
  }
