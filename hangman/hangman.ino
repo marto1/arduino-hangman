@@ -18,8 +18,93 @@
  int joyPin2 = 1;                 // slider variable connecetd to analog pin 1
  int value1 = 0;                  // variable to read the value from the analog pin 0
  int value2 = 0;                  // variable to read the value from the analog pin 1
+ int joybutton = 9;
+ 
+ 
+ // include the library code:
+ #include <LiquidCrystal.h>
+ 
+ 
+ class Window
+ {
+  private:
+      LiquidCrystal& l;
+      String firstLine;
+      String secondLine;
+      char rawLine[17];
+  public:
+      Window(LiquidCrystal& lvar):
+      l(lvar){}
+      void setFirstLine(String line){
+        firstLine = String(line);
+      }
+      
+      void setSecondLine(String line){
+        secondLine = String(line);
+      }
+      
+      void displayLine(String line, int linenum){
+        memset(rawLine, 0, 17);
+        line.toCharArray(rawLine, 17); 
+        l.setCursor(0,linenum);
+        l.print(rawLine);
+        l.setCursor(0,linenum);
+      }
+      
+      void displayFirstLine(){
+        displayLine(firstLine, 0);
+      }
+      
+      void displaySecondLine(){
+        displayLine(secondLine, 1);
+      }
+      
+ };
 
+ // initialize the library with the numbers of the interface pins
+ LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+ Window win = Window(lcd);
+
+ int thisChar = 'a';
+ char* alphabet = "abcdefghijklmnopqrstuvwxyz";
+
+ void initFirstLine(int wordLength, int tries){
+  String result = "";
+  String strTries = String(tries);
+  for (int i; i < 14;i++){
+    if (wordLength > 0) {
+      result += '_';
+    } else {
+      result += ' ';
+    }
+    wordLength--;
+  }
+  result += ' ';
+  result += strTries;
+  win.setFirstLine(result);
+  win.displayFirstLine();
+ }
+
+ void initSecondLine() {
+  win.setSecondLine(alphabet);
+  win.displaySecondLine();
+ }
+
+ void moveCursor(int previous){
+
+ 
+ }
+ 
+ 
  void setup() {
+     // set up the LCD's number of columns and rows: 
+  lcd.begin(16, 2);
+  // turn on the cursor:
+  lcd.cursor();
+  //delay(1000);
+  initFirstLine(6, 4);
+  initSecondLine();
+  //lcd.setCursor(0, 1);
   Serial.begin(9600);
  }
 
@@ -58,7 +143,7 @@
   // analog pins, otherwise we get the same value twice
   delay(1000);            
   // reads the value of the variable resistor
-  value2 = analogRead(joyPin2);  
+  value2 = analogRead(joyPin2);
   Serial.print('J');
   Serial.print(treatValue(value1));
   Serial.print('|');
