@@ -58,6 +58,23 @@ public:
     void displayFirstLine(){
         displayLine(firstLine, 0);
     }
+
+    void setFirstLineHangman(String word, int tries){
+	int wordLength = word.length();
+	String result = "";
+	String strTries = String(tries);
+	for (int i = 0; i < 14;i++){
+	    if (wordLength > 0) {
+		result += '_';
+	    } else {
+		result += ' ';
+	    }
+	    wordLength--;
+ 	}
+	result += ' ';
+	result += strTries;
+	setFirstLine(result);
+    }
       
     void displaySecondLine(){
         displayLine(secondLine, 1);
@@ -68,10 +85,8 @@ public:
         if (side) {
 	    secondLine = String(secondLine.substring(1, len));
 	    secondLine += String(fill);
-	    //setSecondLine("FSDS");
         } else { 
 	    secondLine = String(fill) + secondLine.substring(0, len-1);
-	    //l.scrollDisplayRight();
         }
         l.clear();
         displayFirstLine();
@@ -83,20 +98,35 @@ public:
 class GameGuess
 {
 private:
-    Window& win;
     String word;
+    unsigned int guessed;
     int tries;
 public:
-    GameGuess(Window& lvar, String wordvar):
-	win(lvar),
-	word{wordvar}
+    GameGuess(String wordvar):
+	word{wordvar},
+	guessed(0x0)
     {}
 
-     guessLetter(String letter){
-	int cont
-	while (cont >= 0){
-	   cont = readString.indexOf(letter);
+    unsigned int guessLetter(String letter){
+	unsigned int lenl = word.length();
+	for(int i; i < lenl; i++){
+	    if (String(word[i]) == letter){
+		guessed |= 1 << i; //guessed position set
+	    }
 	}
+	return guessed;
+    }
+
+    boolean isGuessed(){
+	unsigned int lenl = word.length();
+	char check;
+	for(int p; p < lenl; p++){
+	    check = (guessed >> p) & 1;
+	    if (!check){
+		return false;
+	    }
+	}
+	return true;
     }
     
 };
@@ -106,26 +136,32 @@ LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 Window win = Window(lcd);
 String name = "donkey";
 int tries = 6;
-GameGuess guess = GameGuess(win, name, tries);
+GameGuess guess = GameGuess(name);
 
 int thisChar = 'a';
 char* alphabet = "abcdefghijklmnopqrstuvwxyz";
 
 void initFirstLine(int wordLength, int tries){
     String result = "";
-    String strTries = String(tries);
-    for (int i; i < 14;i++){
-	if (wordLength > 0) {
-	    result += '_';
-	} else {
-	    result += ' ';
-	}
-	wordLength--;
+    for (int i; i < wordLength;i++){
+	result += '_';
     }
-    result += ' ';
-    result += strTries;
-    win.setFirstLine(result);
+    win.setFirstLineHangman(result, tries);
     win.displayFirstLine();
+    // String result = ""; ("____"
+    // String strTries = String(tries);
+    // for (int i; i < 14;i++){
+    // 	if (wordLength > 0) {
+    // 	    result += '_';
+    // 	} else {
+    // 	    result += ' ';
+    // 	}
+    // 	wordLength--;
+    // }
+    // result += ' ';
+    // result += strTries;
+    // win.setFirstLine(result);
+    // win.displayFirstLine();
 }
 
 void initSecondLine() {
@@ -166,7 +202,7 @@ int getJoyDirection(int x, int y){
     if ((x == 56) && (y == 52)){
 	return 2;
     }
-    if ((x == 52) && (y == 56)){
+     if ((x == 52) && (y == 56)){
 	return 3;
     }
     if ((x == 52) && (y == 48)){
@@ -229,6 +265,8 @@ void loop() {
 	scrollAlphabet(false);
     } else if (dir == 3){
 	Serial.println(alphabet[currentLetter]);
-    }
-  
+	guess.guessLetter(String(alphabet[currentLetter]));
+	Serial.println(guess.isGuessed());
+    }  
 }
+

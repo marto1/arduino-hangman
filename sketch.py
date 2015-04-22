@@ -8,6 +8,7 @@ class GameGuess(object):
         occ = [i for i, l in enumerate(self.word) if l == letter]
         for i in occ:
             self.guessed[i] = 1
+        return occ
 
     def isGuessed(self):
         return all(self.guessed)
