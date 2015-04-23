@@ -65,7 +65,7 @@ public:
 	String strTries = String(tries);
 	for (int i = 0; i < 14;i++){
 	    if (wordLength > 0) {
-		result += '_';
+		result += word[i];//'_';
 	    } else {
 		result += ' ';
 	    }
@@ -75,7 +75,7 @@ public:
 	result += strTries;
 	setFirstLine(result);
     }
-      
+ 
     void displaySecondLine(){
         displayLine(secondLine, 1);
     }
@@ -101,6 +101,7 @@ private:
     String word;
     unsigned int guessed;
     int tries;
+    boolean match;
 public:
     GameGuess(String wordvar):
 	word{wordvar},
@@ -108,9 +109,11 @@ public:
     {}
 
     unsigned int guessLetter(String letter){
+	match = false;
 	unsigned int lenl = word.length();
-	for(int i; i < lenl; i++){
+	for(int i = 0; i < lenl; i++){
 	    if (String(word[i]) == letter){
+		match = true;
 		guessed |= 1 << i; //guessed position set
 	    }
 	}
@@ -120,7 +123,7 @@ public:
     boolean isGuessed(){
 	unsigned int lenl = word.length();
 	char check;
-	for(int p; p < lenl; p++){
+	for(int p = 0; p < lenl; p++){
 	    check = (guessed >> p) & 1;
 	    if (!check){
 		return false;
@@ -128,13 +131,16 @@ public:
 	}
 	return true;
     }
-    
+
+    boolean hasMatch(){
+	return match;
+    }
 };
 
 // initialize the library with the numbers of the interface pins
 LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 Window win = Window(lcd);
-String name = "donkey";
+String name = "boobs";
 int tries = 6;
 GameGuess guess = GameGuess(name);
 
@@ -143,25 +149,28 @@ char* alphabet = "abcdefghijklmnopqrstuvwxyz";
 
 void initFirstLine(int wordLength, int tries){
     String result = "";
-    for (int i; i < wordLength;i++){
+    for (int i = 0; i < wordLength;i++){
 	result += '_';
     }
     win.setFirstLineHangman(result, tries);
     win.displayFirstLine();
-    // String result = ""; ("____"
-    // String strTries = String(tries);
-    // for (int i; i < 14;i++){
-    // 	if (wordLength > 0) {
-    // 	    result += '_';
-    // 	} else {
-    // 	    result += ' ';
-    // 	}
-    // 	wordLength--;
-    // }
-    // result += ' ';
-    // result += strTries;
-    // win.setFirstLine(result);
-    // win.displayFirstLine();
+}
+
+void produce_guessed_word(unsigned int guessed,
+			  String word,
+			  String& result){
+    unsigned int len = word.length();
+    unsigned char check;
+    result = "";
+    //Serial.println(guessed);
+    for (unsigned char i=0; i < len; i++){
+	check = (guessed >> i) & 1;
+	if (check){
+	    result += word[i];
+	} else {
+	    result += "_";
+	}
+    }
 }
 
 void initSecondLine() {
@@ -177,7 +186,7 @@ void setup() {
     lcd.begin(16, 2);
     // turn on the cursor:
     lcd.cursor();
-    initFirstLine(6, 4);
+    initFirstLine(6, tries);
     initSecondLine();
     //win.scrollSecondLine(true, "!");
     Serial.begin(9600);
@@ -245,28 +254,36 @@ void scrollAlphabet(boolean side){
     win.scrollSecondLine(side, c);
 }
 
+void guess_letter(){
+    unsigned int guessed = guess.guessLetter(String(alphabet[currentLetter]));
+    String g;
+    if (!guess.hasMatch()){
+	tries--;
+    }
+    produce_guessed_word(guessed, name, g);
+    win.setFirstLineHangman(g, tries);
+    win.displayFirstLine();
+}
+
+void guess_loop(int value) {
+    if (value == 2){
+	scrollAlphabet(true);
+    } else if (value == 1){
+	scrollAlphabet(false);
+    } else if (value == 3){
+	guess_letter();
+    }  
+
+}
+
 void loop() {
     // reads the value of the variable resistor
     value1 = analogRead(joyPin1);  
     // this small pause is needed between reading
     // analog pins, otherwise we get the same value twice
-    delay(100);            
+    delay(200);
     // reads the value of the variable resistor
     value2 = analogRead(joyPin2);
-    //  Serial.print('J');
-    //  Serial.print(treatValue(value1));
-    //  Serial.print('|');
-    //  Serial.print(treatValue(value2));
-    //  Serial.print('|');
     int dir = getJoyDirection(treatValue(value1), treatValue(value2));
-    if (dir == 2){
-	scrollAlphabet(true);
-    } else if (dir == 1){
-	scrollAlphabet(false);
-    } else if (dir == 3){
-	Serial.println(alphabet[currentLetter]);
-	guess.guessLetter(String(alphabet[currentLetter]));
-	Serial.println(guess.isGuessed());
-    }  
+    guess_loop(dir);
 }
-
