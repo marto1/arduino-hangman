@@ -100,13 +100,16 @@ class GameGuess
 private:
     String word;
     unsigned int guessed;
-    int tries;
     boolean match;
 public:
     GameGuess(String wordvar):
 	word{wordvar},
 	guessed(0x0)
     {}
+
+    void setWord(String w){
+	word = w;
+    }
 
     unsigned int guessLetter(String letter){
 	match = false;
@@ -120,7 +123,7 @@ public:
 	return guessed;
     }
 
-    boolean isGuessed(){
+    boolean isGuessed() const {
 	unsigned int lenl = word.length();
 	char check;
 	for(int p = 0; p < lenl; p++){
@@ -132,29 +135,18 @@ public:
 	return true;
     }
 
-    boolean hasMatch(){
+    boolean hasMatch() const {
 	return match;
     }
-};
 
-// initialize the library with the numbers of the interface pins
-LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
-Window win = Window(lcd);
-String name = "boobs";
-int tries = 6;
-GameGuess guess = GameGuess(name);
-
-int thisChar = 'a';
-char* alphabet = "abcdefghijklmnopqrstuvwxyz";
-
-void initFirstLine(int wordLength, int tries){
-    String result = "";
-    for (int i = 0; i < wordLength;i++){
-	result += '_';
+    unsigned int wordLen() const {
+	return word.length();
     }
-    win.setFirstLineHangman(result, tries);
-    win.displayFirstLine();
-}
+
+    String word() const {
+	return word;
+    }
+};
 
 void produce_guessed_word(unsigned int guessed,
 			  String word,
@@ -162,7 +154,6 @@ void produce_guessed_word(unsigned int guessed,
     unsigned int len = word.length();
     unsigned char check;
     result = "";
-    //Serial.println(guessed);
     for (unsigned char i=0; i < len; i++){
 	check = (guessed >> i) & 1;
 	if (check){
@@ -173,23 +164,175 @@ void produce_guessed_word(unsigned int guessed,
     }
 }
 
-void initSecondLine() {
-    win.setSecondLine(String(alphabet).substring(0, 16));
-    win.displaySecondLine();
-}
- 
-int leftOffset = 16; 
-int rightOffset = 25;
-int currentLetter = 0;
+class Hangman: public GameGuess { //Involves game logic and display
+private:
+    // initialize the library with the numbers of the interface pins
+    char* alphabet = "_________________________g";
+    const char* const topic = "--------------------------";
+    const char* const letters = "abcdefghijklmnopqrstuvwxyz";
+    static const unsigned char tlen = 4;
+    static const unsigned char wlen = 2;
+    String topics[tlen][wlen+1] = {{"animals         ", "lion", "zebra"},
+			   {"body parts      ", "boobs", "penis"},
+			   {"transportation  ", "submarine", "plane"},
+                           {"chem elements   ", "plutonium", "uranium"}};
+    int topicCounter=0;
+    Window window;
+    int mode = 0;
+    int tries;
+    int triesTotal;
+    int leftOffset = 16; 
+    int rightOffset = 25;
+    int currentLetter = 0;
+public:
+    Hangman(int tr, Window win):
+	GameGuess(""),
+	tries(tr),
+	triesTotal(tr),
+	window(win)
+    {}
+
+    void hangmanMode() {
+	leftOffset = 16; 
+	rightOffset = 25;
+	currentLetter = 0;
+	tries = triesTotal;
+	//memset(alphabet, 0, 26);
+	strcpy(alphabet, letters);
+	Serial.println(alphabet);
+	mode = 0;
+    }
+
+    void topicMode() {
+	leftOffset = 16; 
+	rightOffset = 25;
+	currentLetter = 0;
+	//memset(alphabet, 0, 26);
+	strcpy(alphabet, topic);
+	mode = 1;
+    }
+
+    void initTopicFirstLine(){
+	window.setFirstLine(topics[0][0]);
+	window.displayFirstLine();
+    }
+
+    void initFirstLine(){
+	unsigned int wordLength = wordLen();
+	String result = "";
+	for (int i = 0; i < wordLength;i++){
+	    result += '_';
+	}
+	window.setFirstLineHangman(result, tries);
+	window.displayFirstLine();
+    }
+
+    void initSecondLine() {
+	window.setSecondLine(String(alphabet).substring(0, 16));
+	window.displaySecondLine();
+    }
+
+    void makeGuess(){
+	unsigned int guessed = guessLetter(String(alphabet[currentLetter]));
+	String g;
+	if (!hasMatch()){
+	    tries--;
+	}
+	produce_guessed_word(guessed, word(), g);
+	window.setFirstLineHangman(g, tries);
+	window.displayFirstLine();
+    }
+
+    void scrollAlphabet(boolean side){
+	String c;
+	if (leftOffset >= 26) {
+	    leftOffset = 0;
+	}
+	if (leftOffset < 0){
+	    leftOffset = 25;
+	}
+	if (rightOffset >= 26){
+	    rightOffset = 0;
+	}
+	if (rightOffset < 0) {
+	    rightOffset = 25;
+	}
+	if (side){
+	    c = String(alphabet[leftOffset]);
+	    leftOffset++;
+	    rightOffset++;
+	    currentLetter++;
+	} else {
+	    c = String(alphabet[rightOffset]);
+	    rightOffset--;
+	    leftOffset--;
+	    currentLetter--;
+	}
+	if (currentLetter >= 26){
+	    currentLetter = 0;
+	}
+	if (currentLetter < 0){
+	    currentLetter = 25;
+	}
+	window.scrollSecondLine(side, c);
+    }
+
+    void changeTopicFirstLine(){
+	topicCounter++;
+	if (topicCounter == 4){
+	    topicCounter = 0;
+	}
+	window.setFirstLine(topics[topicCounter][0]);
+	window.displayFirstLine();	
+    }
+
+    void startHangman(){
+	hangmanMode();
+	initFirstLine();
+	initSecondLine();
+    }
+
+    void selectTopic(){
+	unsigned char r = random(1, wlen+1);
+	setWord(String(topics[topicCounter][r]));
+	startHangman();
+    }
+
+    void guessLoop(int value) {
+	if (value == 2){
+	    scrollAlphabet(true);
+	    if (mode == 1) {
+		changeTopicFirstLine();
+	    }
+	} else if (value == 1){
+	    scrollAlphabet(false);
+	} else if (value == 3){
+	    if (mode == 1){
+		selectTopic();
+	    } else {
+		Serial.println(alphabet);
+		makeGuess();
+	    }
+	}
+    }
+};
+
+
+LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+Window win = Window(lcd);
+Hangman hangman = Hangman(6, win);
+
 void setup() {
+    Serial.begin(9600);
     // set up the LCD's number of columns and rows: 
     lcd.begin(16, 2);
     // turn on the cursor:
     lcd.cursor();
-    initFirstLine(6, tries);
-    initSecondLine();
-    //win.scrollSecondLine(true, "!");
-    Serial.begin(9600);
+    //hangman.initFirstLine();
+    hangman.topicMode();
+    hangman.initTopicFirstLine();
+    hangman.initSecondLine();
+
 }
 
 int treatValue(int data) {
@@ -219,62 +362,7 @@ int getJoyDirection(int x, int y){
     }
     return 0;
 }
- 
-void scrollAlphabet(boolean side){
-    String c;
-    if (leftOffset >= 26) {
-	leftOffset = 0;
-    }
-    if (leftOffset < 0){
-	leftOffset = 25;
-    }
-    if (rightOffset >= 26){
-	rightOffset = 0;
-    }
-    if (rightOffset < 0) {
-	rightOffset = 25;
-    }
-    if (side){
-	c = String(alphabet[leftOffset]);
-	leftOffset++;
-	rightOffset++;
-	currentLetter++;
-    } else {
-	c = String(alphabet[rightOffset]);
-	rightOffset--;
-	leftOffset--;
-	currentLetter--;
-    }
-    if (currentLetter >= 26){
-	currentLetter = 0;
-    }
-    if (currentLetter < 0){
-	currentLetter = 25;
-    }
-    win.scrollSecondLine(side, c);
-}
 
-void guess_letter(){
-    unsigned int guessed = guess.guessLetter(String(alphabet[currentLetter]));
-    String g;
-    if (!guess.hasMatch()){
-	tries--;
-    }
-    produce_guessed_word(guessed, name, g);
-    win.setFirstLineHangman(g, tries);
-    win.displayFirstLine();
-}
-
-void guess_loop(int value) {
-    if (value == 2){
-	scrollAlphabet(true);
-    } else if (value == 1){
-	scrollAlphabet(false);
-    } else if (value == 3){
-	guess_letter();
-    }  
-
-}
 
 void loop() {
     // reads the value of the variable resistor
@@ -285,5 +373,5 @@ void loop() {
     // reads the value of the variable resistor
     value2 = analogRead(joyPin2);
     int dir = getJoyDirection(treatValue(value1), treatValue(value2));
-    guess_loop(dir);
+    hangman.guessLoop(dir);
 }
