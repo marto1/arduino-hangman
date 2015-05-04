@@ -23,6 +23,28 @@ int joybutton = 9;
  
 // include the library code:
 #include <LiquidCrystal.h>
+
+
+byte smiley[8] = {
+  B00000,
+  B10001,
+  B00000,
+  B00000,
+  B10001,
+  B01110,
+  B00000,
+};
+
+byte sad[8] = {
+  B00000,
+  B10001,
+  B00000,
+  B00000,
+  B01110,
+  B10001,
+  B00000,
+};
+
  
  
 class Window
@@ -164,6 +186,8 @@ void produce_guessed_word(unsigned int guessed,
     }
 }
 
+LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+
 class Hangman: public GameGuess { //Involves game logic and display
 private:
     // initialize the library with the numbers of the interface pins
@@ -210,6 +234,83 @@ public:
 	//memset(alphabet, 0, 26);
 	strcpy(alphabet, topic);
 	mode = 1;
+    }
+
+    void winningMode() {
+	leftOffset = 16; 
+	rightOffset = 25;
+	currentLetter = 0;
+	mode = 2;
+    }
+
+    void winning(){ //show winning
+	int i = 0;
+	bool side = true;
+	String line = "                ";
+	window.setFirstLine("  Y O U  W I N! ");
+	window.displayFirstLine();
+	window.setSecondLine(line);
+	window.displaySecondLine();
+	while(true){
+	    lcd.noDisplay();
+	    delay(200);
+	    lcd.display();
+	    window.setSecondLine(line);
+	    window.displaySecondLine();
+	    lcd.setCursor(i, 1);
+	    lcd.write(byte(0));
+	    lcd.setCursor(i, 1);
+	    delay(200);
+	    if (side){
+		i++;
+		if (i >= 15){
+		    side = false;
+		}
+	    } else {
+		i--;
+		if (i <= 0){
+		    side = true;
+		}
+	    }
+	}
+    }
+
+    void losing(){ //show losing
+	int i = 0;
+	bool side = true;
+	String line = "                ";
+	window.setFirstLine("  Y O U  L O S E!");
+	window.displayFirstLine();
+	window.setSecondLine(line);
+	window.displaySecondLine();
+	while(true){
+	    lcd.noDisplay();
+	    delay(200);
+	    lcd.display();
+	    lcd.setCursor(i, 1);
+	    lcd.write(byte(1));
+	    lcd.setCursor(i, 1);
+	    delay(200);
+	    if (side){
+		i++;
+		if (i >= 15){
+		    side = false;
+		}
+	    } else {
+		i--;
+		if (i <= 0){
+		    side = true;
+		}
+	    }
+	}
+
+    }
+
+    void losingMode(){
+	leftOffset = 16; 
+	rightOffset = 25;
+	currentLetter = 0;
+	mode = 3;
     }
 
     void initTopicFirstLine(){
@@ -312,18 +413,31 @@ public:
 	    } else {
 		Serial.println(alphabet);
 		makeGuess();
+		if (isGuessed()) { //if you win
+		    delay(1000);
+		    winningMode();
+		    winning();
+		    return;
+		}
+		if (tries == 0) { //if you lose
+		    delay(1000);
+		    losingMode();
+		    losing();
+		    return;
+		}
 	    }
 	}
     }
 };
 
 
-LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 Window win = Window(lcd);
 Hangman hangman = Hangman(6, win);
 
 void setup() {
     Serial.begin(9600);
+    lcd.createChar(0, smiley);
+    lcd.createChar(1, sad);
     // set up the LCD's number of columns and rows: 
     lcd.begin(16, 2);
     // turn on the cursor:
